@@ -2,7 +2,7 @@
 # Paper Pusher 配置文件
 # ============================================================
 # ${VAR} 占位符会被运行时替换为环境变量；未设置时保持原样（被视为未提供）。
-# 真实的 key 请通过环境变量传入，避免提交到版本库。
+
 
 # ----- 关注领域 ------------------------------------------------
 # 顶层分类标签。
@@ -22,10 +22,6 @@ field: "TinyML & AI 前沿"
 #                的桶名（如 tinyml / algorithm / ai-frontier / data-science）。
 #                不写时该 query 不进任何配额桶，会被推送配额忽略。
 #
-# 当前画像：
-#   - 数据科学/大数据专业的在读学生
-#   - 在做的项目：TinyML 在农业方向的模型训练（边缘部署 + 农业应用）
-#   - 未来方向：算法（高效深度学习、压缩、NAS、自监督等"造方法"的工作）
 #
 # 定时推送的角色：每日早晨快速扫一眼，**视野拓展**用。
 # 真正深挖某个方向请用 `python main.py --search "..." --push` 单次触发
@@ -103,23 +99,17 @@ queries:
     query: "[graph neural network] AND ([prediction] OR [representation learning])"
     group: data-science
 
-  # —— 顶会 venue（按需取消注释）——
-  # - label: "venue: NeurIPS/ICML/ICLR"
-  #   query: "src[NeurIPS] OR src[ICML] OR src[ICLR]"
-  #   group: ai-frontier
 
 # ----- LLM 摘要 ------------------------------------------------
 # 控制怎么把论文 abstract 变成结构化中文摘要。
 llm:
-  # 选哪家 LLM。可选 "deepseek" / "minimax"；下方两段各自的配置。
-  # 想换其他 OpenAI 兼容厂商：照 deepseek 段写一份新的，把 provider 指过去就行。
   provider: "deepseek"
 
   # 每篇论文摘要失败后的重试次数（这是 reflection 修正之外的网络/超时重试）。
   # 2 = 一次正常 + 两次重试。慢/不稳的 API 适当调大。
   max_retries: 2
 
-  # 单次 API 调用超时秒数。deepseek-reasoner 这种思考时间长的模型建议 60+。
+  # 单次 API 调用超时秒数。
   timeout: 30
 
   # 摘要最大输出 token 数。摘要被截断时调大；建议 ≥600。
@@ -160,9 +150,9 @@ llm:
 
   # DeepSeek 配置段（provider="deepseek" 时生效）
   deepseek:
-    # 模型名。deepseek-chat = 快、便宜；deepseek-reasoner = 慢、推理更强、token 贵。
+    # 模型名。
     model: "deepseek-chat"
-    # API key。从 https://platform.deepseek.com 申请。可填占位符 ${DEEPSEEK_API_KEY} 走环境变量。
+    # API key。从 https://platform.deepseek.com 申请。
     api_key: "${DEEPSEEK_API_KEY}"
     # API 入口。一般不动；自建网关时改这里。
     base_url: "https://api.deepseek.com"
@@ -313,9 +303,3 @@ enrichment_databases:
   # 装不上 curl-cffi（某些 Windows / musl libc 发行版）时关掉。
   web_scraping:
     enabled: true
-
-# ----- 全局 ----------------------------------------------------
-# proxy: 全局 HTTP/HTTPS 代理。某些数据库需要科学上网时填，例如 "http://127.0.0.1:7890"
-# ssl_verify: 是否校验 HTTPS 证书。一般 true；公司有强制中间证书时设 false。
-# proxy: "http://proxy:8080"
-# ssl_verify: true
