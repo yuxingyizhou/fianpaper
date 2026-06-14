@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
 # Paper Pusher dependencies (Python 3.11+)
 
-# findpapers (vendored) runtime deps
 requests>=2.32.0
 lxml>=4.5.2,<7
 curl-cffi>=0.7.0
