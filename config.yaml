@@ -1,0 +1,321 @@
+# ============================================================
+# Paper Pusher 配置文件
+# ============================================================
+# ${VAR} 占位符会被运行时替换为环境变量；未设置时保持原样（被视为未提供）。
+# 真实的 key 请通过环境变量传入，避免提交到版本库。
+
+# ----- 关注领域 ------------------------------------------------
+# 顶层分类标签。
+# 作用：① 飞书卡片头部分类标签 ② 每条 query 未指定 category 时的默认值
+#       ③ `--stats` 输出的分组维度
+# 改方向时把这一行连同下面 queries 一起换掉就行。
+field: "TinyML & AI 前沿"
+
+# ----- 查询列表 ------------------------------------------------
+# 一个领域可以拆成多个维度并行查；每条 query 跑一次 findpapers 全量搜索。
+# 每条 list item 支持四个键：
+#   label     —— [可选] 人类可读维度名。会出现在日志和飞书卡片副标题里；
+#                不写时日志直接用 query 字符串本身，长 query 会很难看。
+#   query     —— [必填] findpapers DSL 字符串（语法见下面速查）。
+#   category  —— [可选] 覆盖顶层 field，给这条 query 单独分类。多领域并行时常用。
+#   group     —— [可选] 配额分组键，对应下方 schedule.group_quotas / queries_per_group
+#                的桶名（如 tinyml / algorithm / ai-frontier / data-science）。
+#                不写时该 query 不进任何配额桶，会被推送配额忽略。
+#
+# 当前画像：
+#   - 数据科学/大数据专业的在读学生
+#   - 在做的项目：TinyML 在农业方向的模型训练（边缘部署 + 农业应用）
+#   - 未来方向：算法（高效深度学习、压缩、NAS、自监督等"造方法"的工作）
+#
+# 定时推送的角色：每日早晨快速扫一眼，**视野拓展**用。
+# 真正深挖某个方向请用 `python main.py --search "..." --push` 单次触发
+# （单次查询默认时间窗 1 年、可按引用量排序，方便挖经典工作）。
+#
+# DSL 速查：
+#   [term]                  默认 title+abstract
+#   ti[term]                只匹配标题
+#   abs[term]               只匹配摘要
+#   key[term]               关键词
+#   au[name]                作者
+#   src[venue]              期刊/会议
+#   AND / OR / AND NOT      布尔连接（必须大写、两侧有空格）
+#   ([a] OR [b]) AND [c]    括号分组
+#   *                       右端通配（至少 3 字符前缀）
+#
+# 想换方向参考 README 的"切换关注领域"章节。
+queries:
+  # ============ 当前项目核心：TinyML + 农业（4 条）============
+  # —— TinyML / 边缘推理 ——
+  - label: "TinyML / edge inference"
+    query: "[TinyML] OR ([edge] AND [inference])"
+    group: tinyml
+
+  # —— 微控制器 / 嵌入式 ML ——
+  - label: "embedded / MCU ML"
+    query: "([microcontroller] OR [MCU] OR [embedded]) AND ([machine learning] OR [neural network])"
+    group: tinyml
+
+  # —— 模型压缩(量化/剪枝/蒸馏)——
+  - label: "model compression"
+    query: "([quantization] OR [pruning] OR [knowledge distillation]) AND ([efficient] OR [edge] OR [mobile])"
+    group: tinyml
+
+  # —— 农业 AI ——
+  - label: "agriculture / smart farming"
+    query: "([agriculture] OR [crop] OR [plant disease] OR [precision farming]) AND ([deep learning] OR [neural network])"
+    group: tinyml
+
+  # ============ 未来方向：算法（2 条）============
+  # —— 神经架构搜索（与 TinyML 紧密相关，也是算法热点）——
+  - label: "neural architecture search"
+    query: "[neural architecture search] OR ti[NAS]"
+    group: algorithm
+
+  # —— 自监督 / 少标注（农业数据稀缺 + 算法主流）——
+  - label: "self-supervised / few-shot"
+    query: "([self-supervised] OR [few-shot]) AND ([image] OR [vision])"
+    group: algorithm
+
+  # ============ AI 主流前沿（视野拓展，3 条）============
+  # —— LLM / Agent / RAG（不能不知道行业在做什么）——
+  - label: "LLM / agent / RAG"
+    query: "([large language model] OR [LLM]) AND ([agent] OR [retrieval augmented] OR [tool use])"
+    group: ai-frontier
+
+  # —— 多模态 / 视觉语言模型 ——
+  - label: "multimodal / vision-language"
+    query: "[vision language model] OR [multimodal large language model]"
+    group: ai-frontier
+
+  # —— 扩散模型 / 生成式 AI ——
+  - label: "diffusion / generation"
+    query: "[diffusion model] AND ([image generation] OR [video generation] OR [conditional generation])"
+    group: ai-frontier
+
+  # ============ 数据科学根基（2 条）============
+  # —— 时序预测 / 时序基础模型（数据科学常见任务，也是 2025-2026 热点）——
+  - label: "time series / forecasting"
+    query: "[time series] AND ([forecasting] OR [foundation model] OR [transformer])"
+    group: data-science
+
+  # —— 图神经网络（生物 / 农业 / 推荐都用得上）——
+  - label: "graph neural network"
+    query: "[graph neural network] AND ([prediction] OR [representation learning])"
+    group: data-science
+
+  # —— 顶会 venue（按需取消注释）——
+  # - label: "venue: NeurIPS/ICML/ICLR"
+  #   query: "src[NeurIPS] OR src[ICML] OR src[ICLR]"
+  #   group: ai-frontier
+
+# ----- LLM 摘要 ------------------------------------------------
+# 控制怎么把论文 abstract 变成结构化中文摘要。
+llm:
+  # 选哪家 LLM。可选 "deepseek" / "minimax"；下方两段各自的配置。
+  # 想换其他 OpenAI 兼容厂商：照 deepseek 段写一份新的，把 provider 指过去就行。
+  provider: "deepseek"
+
+  # 每篇论文摘要失败后的重试次数（这是 reflection 修正之外的网络/超时重试）。
+  # 2 = 一次正常 + 两次重试。慢/不稳的 API 适当调大。
+  max_retries: 2
+
+  # 单次 API 调用超时秒数。deepseek-reasoner 这种思考时间长的模型建议 60+。
+  timeout: 30
+
+  # 摘要最大输出 token 数。摘要被截断时调大；建议 ≥600。
+  max_tokens: 800
+
+  # 并行摘要的线程数。免费/低速率 tier 给 1-3；付费高 RPM 可以拉到 5-10。
+  # 太大会触发 LLM 限频，不会更快。
+  max_workers: 3
+
+  # 摘要模板。必须保留 {title} {authors} {journal} {content} 这 4 个占位符。
+  # 五个 emoji 标记（🏷️ 📌 💡 📋 ⭐）也必须存在，否则会被 reflection 判定不合格触发重试。
+  # 想改输出风格（比如更短/更长/侧重不同维度）就直接改这段文字。
+  summary_prompt: |
+    请用中文为以下学术论文生成结构化摘要：
+
+    原标题: {title}
+    作者: {authors}
+    期刊/来源: {journal}
+    摘要原文: {content}
+
+    请严格按以下格式输出（不要添加其他内容）：
+
+    🏷️ [中文标题翻译]
+
+    📌 [一句话核心贡献，不超过30字]
+
+    💡 推荐理由:
+    [1-2句说明为什么值得关注——方法新颖性、数据规模、综述完整性、与某热点的相关性等]
+
+    📋 关键要点:
+    • 解决的问题: ...
+    • 采用的方法: ...
+    • 主要结论: ...
+
+    👥 适合: [领域研究者 / 跨学科入门 / 工程实践参考]
+
+    ⭐ 推荐: [必读 / 选读 / 速览]
+
+  # DeepSeek 配置段（provider="deepseek" 时生效）
+  deepseek:
+    # 模型名。deepseek-chat = 快、便宜；deepseek-reasoner = 慢、推理更强、token 贵。
+    model: "deepseek-chat"
+    # API key。从 https://platform.deepseek.com 申请。可填占位符 ${DEEPSEEK_API_KEY} 走环境变量。
+    api_key: "${DEEPSEEK_API_KEY}"
+    # API 入口。一般不动；自建网关时改这里。
+    base_url: "https://api.deepseek.com"
+
+  # MiniMax 配置段（provider="minimax" 时生效）
+  minimax:
+    model: "MiniMax-M2.7"
+    api_key: "${MINIMAX_API_KEY}"
+    base_url: "https://api.minimax.chat"
+
+# ----- 推送通道 ------------------------------------------------
+# 摘要生成后往哪里发。可以同时开多个，会逐个发。全部关闭时只写库不推送。
+notify:
+  feishu:
+    # 总开关。false 时摘要只写库不发飞书。
+    enabled: true
+    # 飞书自定义机器人 webhook 完整 URL。
+    # 获取方式：群设置 → 群机器人 → 添加机器人 → 自定义机器人 → 复制 webhook 地址。
+    webhook_url: "${FEISHU_WEBHOOK_URL}"
+    # 两次推送间最小间隔秒数。飞书官方限速 5 msg/sec，1.2 留余量。
+    # 频繁被 11232 限频就调大到 2.0+。
+    min_interval_sec: 1.2
+    # 收到 11232（频率超限）后的退避重试次数。
+    max_rate_limit_retries: 3
+
+  email:
+    # 邮件推送总开关。论文场景默认关——飞书卡片更适合阅读。
+    enabled: false
+    # SMTP 服务器配置。Gmail 见示例；QQ/163/Outlook 各自的 SMTP 自行查。
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    # 发件邮箱账号。
+    username: "${EMAIL_USER}"
+    # 注意：不是登录密码，是邮箱服务商给的"授权码"/"应用专用密码"。
+    # Gmail 需要先开两步验证再生成"应用专用密码"。
+    password: "${EMAIL_PASS}"
+    # 收件人邮箱。
+    to: "you@example.com"
+
+# ----- 调度 ----------------------------------------------------
+# 定时推送的节奏和数量控制。**只影响 `python main.py` / `--once`**，
+# 单次查询 `--search` 走自己的时间窗逻辑（默认 1 年）。
+schedule:
+  # 调度周期。1440 = 每 24h 跑一次，360 = 6h 一次，60 = 1h 一次。
+  # 论文更新慢，一天一次完全够；想盯紧某个会议截稿期可以调短。
+  interval_minutes: 1440
+
+  # 每次最多推送多少篇。日推 3-5 篇 = 视野拓展；想"重度沉浸"可以拉到 10+。
+  # 超出此数的论文进入 pending 队列，下次新论文不够时补出。
+  # **如果配了 group_quotas，本字段是硬上限**（即 sum(group_quotas) > 此值时仍截断）。
+  max_articles_per_run: 8
+
+  # 分组配额（可选）。声明后每个 group 在 round-robin 内**至少**保到这么多篇，
+  # 某组当天凑不齐时缺额自动从其他组的剩余论文里溢出补，总数不超过 max_articles_per_run。
+  # 留空 / 注释掉 → 退回旧的 query 平均轮询逻辑。
+  # 当前比例 3:1:3:1 = tinyml 项目核心、未来算法、AI 前沿、数据科学根基。
+  group_quotas:
+    tinyml: 3
+    algorithm: 1
+    ai-frontier: 3
+    data-science: 1
+
+  # 每次跑只从每个 group 取 N 条 query 来跑，**跨天确定性轮转**（不重复）。
+  # true → 按 queries_per_group（不配则用 group_quotas）从组内按游标顺序取；
+  #        游标存在 SQLite 的 kv_store 里，今天取 [A,B]、明天 [C,D]、走完一圈再回头
+  # false → 跑全部 queries
+  # 组内 query 数 ≤ 配额时等于全跑，本开关只影响 query 数大于配额的组。
+  sample_queries: true
+
+  # 轮转步长（可选）。仅当 sample_queries: true 生效。
+  # 不配 → 用 group_quotas 当步长（轮转和推送配额对齐）。
+  # 配了 → 与推送配额解耦：步长 < 配额数时缺额会靠 pending 补。
+  queries_per_group:
+    tinyml: 2
+    algorithm: 1
+    ai-frontier: 2
+    data-science: 1
+
+  # 只取最近 N 天发表的论文。N 太大会反复推到老论文；太小可能没新东西。
+  # 日推用 7 天最合适。**不影响 `--search`**（后者默认 1 年）。
+  max_age_days: 7
+
+  # 每个 query × 每个数据库最多拉多少篇原始结果。
+  # 调大 → 召回更全、API 调用越多；调小 → 跑得快但容易漏。
+  max_papers_per_query_db: 10
+
+  # 新论文数量不够 max_articles_per_run 时，是否从 pending 队列补全。
+  # true = 推送条数稳定；false = 没新东西就少推甚至不推。
+  auto_fill_pending: true
+
+  # findpapers 自己的 DEBUG 日志开关。true 时日志非常吵，排查问题时再开。
+  verbose: false
+
+  # --search --digest 模式：搜索结果做成飞书列表卡时每页条数。
+  # 硬上限 25（飞书卡片元素/payload 上限），超过会被自动 clip 并警告。
+  # CLI 的 --digest-size 优先级更高。
+  search_digest_size: 15
+
+# ----- 7 个搜索数据库 ------------------------------------------
+# `enabled: false` 直接跳过；`enabled: true` 但缺 key 时也会自动跳过（不报错）。
+# arxiv 不需要 key，是预印本主战场，强烈建议保持开启。
+search_databases:
+  # arXiv：预印本（cs/stat 等领域 80%+ 来源）。免 key、不限频。
+  arxiv:
+    enabled: true
+
+  # OpenAlex：跨学科 + 引用图谱 + 学者画像。**完全免费、不需要 API key**。
+  # 只需可选填 email 加入"polite pool"提高速率优先级。
+  openalex:
+    enabled: true
+    api_key: ""
+    # 用于 OpenAlex "polite pool"（提高速率优先级），填你的联系邮箱。
+    email: "${CONTACT_EMAIL}"
+
+  # PubMed：生物医学 / 生命科学专用。免费 key 可在 NCBI 申请。
+  pubmed:
+    enabled: false
+    api_key: "${PUBMED_API_KEY}"
+
+  # Semantic Scholar：AI 索引强、引用图谱细。免费 key 可在官网申请。
+  semantic_scholar:
+    enabled: false
+    api_key: "${SEMANTIC_SCHOLAR_API_KEY}"
+
+  # IEEE Xplore：IEEE 旗下会议/期刊。需要付费 API key。
+  ieee:
+    enabled: false
+    api_key: "${IEEE_API_KEY}"
+
+  # Scopus：Elsevier 索引库，工程/医学/物理覆盖广。需要付费 API key。
+  scopus:
+    enabled: false
+    api_key: "${SCOPUS_API_KEY}"
+
+  # Web of Science：Clarivate 索引库。需要付费 API key + 通常还需要 IP 白名单。
+  wos:
+    enabled: false
+    api_key: "${WOS_API_KEY}"
+
+# ----- 补全数据库（论文搜回后用来补 DOI / 作者 / PDF 链接等元数据）------
+# 这些库不参与搜索，只在已经搜到论文之后补全字段。
+enrichment_databases:
+  # Crossref：DOI 元数据查询。免费、稳定，建议开。
+  crossref:
+    enabled: true
+
+  # Web 抓取：直接从论文官网拉元数据（需要 curl-cffi 绕反爬）。
+  # 装不上 curl-cffi（某些 Windows / musl libc 发行版）时关掉。
+  web_scraping:
+    enabled: true
+
+# ----- 全局 ----------------------------------------------------
+# proxy: 全局 HTTP/HTTPS 代理。某些数据库需要科学上网时填，例如 "http://127.0.0.1:7890"
+# ssl_verify: 是否校验 HTTPS 证书。一般 true；公司有强制中间证书时设 false。
+# proxy: "http://proxy:8080"
+# ssl_verify: true
